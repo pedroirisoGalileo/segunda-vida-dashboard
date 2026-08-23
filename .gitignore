@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+dashboard.env
+mikrotik.env
+settings.json
+network-request.json
+network-settings.json
+camera.jpg

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Panel ambiental · Segunda Vida</title>
+  <link rel="stylesheet" href="/static/style.css?v=5">
+  <style>
+    .weather-main{display:flex;align-items:center;gap:14px;margin:20px 0 14px}.weather-icon{font-size:52px;line-height:1}.weather-main strong{font-size:43px}.weather-main small{display:block;color:var(--muted)}
+    .speed{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 10px}.speed span{padding:9px;border-radius:10px;background:#13211e;color:var(--muted);font-size:9px}.speed strong{display:block;color:var(--ink);font-size:18px;margin-top:3px}.wan-id{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wan-id b{color:var(--green)}
+    @media(max-width:760px){html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}.shell{height:auto;min-height:100vh;padding:12px}.grid{display:flex;flex-direction:column}.card,.audio,.system{width:100%;min-height:280px}.audio{height:480px}.network{display:block}.meters{min-height:300px}header{grid-template-columns:1fr auto}.clock{justify-self:end}.health{display:none}footer{height:auto;padding:8px 0}.weather-main{margin:18px 0}.stats{grid-template-columns:1fr;gap:12px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><b>2</b><span><small>SEGUNDA VIDA</small><strong>Panel ambiental</strong></span></div>
+      <div class="clock"><strong id="clock">--:--</strong><span id="date">Cargando…</span></div>
+      <div class="health"><i></i><span><strong id="overall">Iniciando</strong><small id="updated">Esperando datos</small></span></div>
+    </header>
+    <section class="grid">
+      <article class="card audio">
+        <div class="heading"><span><small>AMBIENTE</small><strong>Nivel sonoro</strong></span><em>● EN VIVO</em></div>
+        <div class="meters">
+          <div class="meter"><b>L</b><canvas id="meter-l" width="44" height="360"></canvas></div>
+          <div class="meter"><b>R</b><canvas id="meter-r" width="44" height="360"></canvas></div>
+        </div>
+        <div class="legend"><span>Silencio</span><span>0 VU</span></div>
+        <div class="notice"><b>⌁</b><span><strong id="noise-label">Escuchando</strong><small id="audio-state">Entrada integrada</small></span></div>
+      </article>
+      <article class="card climate">
+        <div class="heading"><span><small id="weather-location">MI LOCALIDAD</small><strong>Clima exterior</strong></span><em>OPEN-METEO</em></div>
+        <div class="weather-main"><span class="weather-icon" id="weather-icon">◌</span><span><strong id="weather-temp">--°</strong><small id="weather-text">Mi localidad</small></span></div>
+        <div class="reading"><span>Máx / mín exterior<strong id="weather-range">-- / --</strong></span><span>Interior · NanoPi<strong><b id="temp">--°</b> · <b id="humidity">--%</b></strong></span></div>
+      </article>
+      <article class="card network">
+        <div class="heading"><span><small>CONECTIVIDAD</small><strong>Red doméstica</strong></span><em>LAN</em></div>
+        <div class="speed"><span>↓ WAN AHORA<strong id="download">-- Mbps</strong></span><span>↑ WAN AHORA<strong id="upload">-- Mbps</strong></span></div>
+        <div class="wan-id">IP <b id="wan-ip">consultando…</b></div><div class="wan-id">ISP <b id="wan-isp">consultando…</b></div><div class="wan-id">TEST <b id="speed-test">--</b></div>
+        <div class="services"><span><i id="router-dot"></i>Router<b id="router">--</b></span><span><i id="nanopi-dot"></i>NanoPi<b id="nanopi">--</b></span><span><i class="ok"></i>Internet<b id="internet">--</b></span></div>
+      </article>
+      <article class="card system">
+        <div class="heading"><span><small>NETBOOK</small><strong>Estado del equipo</strong></span><em id="battery">CA</em></div>
+        <div class="stats">
+          <span>CPU <b id="cpu">--%</b><i><u id="cpu-bar"></u></i></span>
+          <span>Memoria <b id="memory">--%</b><i><u id="memory-bar"></u></i></span>
+          <span>Disco <b id="disk">--%</b><i><u id="disk-bar"></u></i></span>
+        </div>
+      </article>
+    </section>
+    <footer><span><i></i>Sistema local</span></footer>
+  </main>
+  <script src="/static/app.js?v=5"></script>
+</body>
+</html>

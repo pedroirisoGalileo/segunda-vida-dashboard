@@ -1,0 +1,9 @@
+[Unit]
+Description=Observar solicitudes de configuración de red
+
+[Path]
+PathExists=/var/lib/dashboard/network-request.json
+Unit=dashboard-network.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=Aplicar configuración de red del dashboard
+After=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/segunda-vida-dashboard/network_config.py

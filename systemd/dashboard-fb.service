@@ -1,0 +1,18 @@
+[Unit]
+Description=Dashboard directo sobre framebuffer
+After=dashboard.service systemd-user-sessions.service
+Wants=dashboard.service
+Conflicts=getty@tty1.service dashboard-kiosk.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/segunda-vida-dashboard/fb_dashboard.py
+Restart=always
+RestartSec=3
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

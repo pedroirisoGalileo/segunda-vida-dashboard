@@ -1,0 +1,26 @@
+[Unit]
+Description=Dashboard ambiental local
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dashboard
+Group=dashboard
+SupplementaryGroups=audio video
+WorkingDirectory=/opt/segunda-vida-dashboard
+EnvironmentFile=/etc/dashboard/dashboard.env
+EnvironmentFile=/etc/dashboard/mikrotik.env
+ExecStart=/usr/bin/python3 /opt/segunda-vida-dashboard/server.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RuntimeDirectory=dashboard
+StateDirectory=dashboard
+ReadWritePaths=/var/lib/dashboard
+
+[Install]
+WantedBy=multi-user.target

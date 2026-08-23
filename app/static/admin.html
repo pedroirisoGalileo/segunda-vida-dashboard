@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administración · Dashboard</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:22px;background:#07100f;color:#effff8;font:15px Arial,sans-serif}main{max-width:900px;margin:auto}a{color:#58f0a5}.card{margin-top:20px;padding:20px;border:1px solid #234239;border-radius:18px;background:#0e1a18}h1{margin-bottom:4px}h2{margin-top:0}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}label{display:block;color:#9ab0a8;font-size:12px}input,select{width:100%;margin-top:5px;padding:11px;border:1px solid #34554b;border-radius:9px;background:#07100f;color:#effff8}.device{display:grid;grid-template-columns:1fr 1.5fr 90px;gap:8px;margin:8px 0}button{padding:11px 16px;border:0;border-radius:10px;background:#58f0a5;color:#062015;font-weight:bold;cursor:pointer}.secondary{background:#244239;color:#effff8}#message,#network_message{margin-left:12px;color:#58f0a5}img{display:block;max-width:100%;margin-top:15px;border-radius:12px}@media(max-width:600px){.grid,.device{grid-template-columns:1fr}.device{padding-bottom:12px;border-bottom:1px solid #244239}}
+</style></head><body><main>
+<a href="/">← Volver al panel</a><h1>Administración local</h1><p>Los cambios se aplican automáticamente, sin reiniciar.</p>
+<section class="card"><h2>Clima y sensores</h2><div class="grid">
+<label>Localidad<input id="location"></label><label>IP o nombre de NanoPi<input id="nanopi_host"></label>
+<label>Latitud<input id="latitude" type="number" step="any"></label><label>Longitud<input id="longitude" type="number" step="any"></label>
+<label>IP o nombre del router<input id="router_host"></label>
+</div></section>
+<section class="card"><h2>Equipos monitoreados</h2><p>Hasta seis destinos. El puerto permite comprobar un servicio concreto, por ejemplo 80 web, 22 SSH o 443 HTTPS.</p><div id="devices"></div><button class="secondary" type="button" onclick="addDevice()">+ Agregar equipo</button></section>
+<section class="card"><h2>Wi‑Fi e IP</h2><p>Dejá la contraseña vacía para conservar la actual. Una IP fija debe incluir el prefijo, por ejemplo <code>/24</code>.</p><div class="grid">
+<label>Red Wi‑Fi (SSID)<input id="wifi_ssid"></label><label>Contraseña Wi‑Fi<input id="wifi_password" type="password" placeholder="Sin cambios"></label>
+<label>Configuración IPv4<select id="wifi_mode" onchange="networkMode()"><option value="dhcp">DHCP automático</option><option value="static">IP fija</option></select></label>
+<label class="static-net">IP y prefijo<input id="wifi_address" placeholder="192.168.1.50/24"></label>
+<label class="static-net">Gateway<input id="wifi_gateway" placeholder="192.168.1.1"></label><label class="static-net">DNS, separados por coma<input id="wifi_dns" placeholder="1.1.1.1,8.8.8.8"></label>
+</div><p id="network_status"></p><button type="button" onclick="saveNetwork()">Aplicar red</button><span id="network_message"></span></section>
+<section class="card"><button onclick="save()">Guardar configuración</button><span id="message"></span></section>
+<section class="card"><h2>Cámara</h2><p>La imagen sólo se solicita al presionar el botón.</p><button onclick="photo.src='/api/camera.jpg?t='+Date.now();photo.hidden=false">Tomar fotografía</button><img id="photo" hidden alt="Fotografía de la webcam"></section>
+</main><script>
+const fields=['location','nanopi_host','latitude','longitude','router_host'];
+function row(v={name:'Equipo',host:'',port:80}){const d=document.createElement('div');d.className='device';d.innerHTML=`<input class="name" placeholder="Nombre" value="${esc(v.name)}"><input class="host" placeholder="IP o nombre" value="${esc(v.host)}"><input class="port" type="number" min="1" max="65535" value="${Number(v.port)||80}">`;return d}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function addDevice(v){const box=document.getElementById('devices');if(box.children.length<6)box.appendChild(row(v))}
+async function load(){const r=await fetch('/api/settings');const s=await r.json();fields.forEach(k=>document.getElementById(k).value=s[k]);s.devices.forEach(addDevice)}
+async function save(){const s={};fields.forEach(k=>s[k]=document.getElementById(k).value);s.devices=[...document.querySelectorAll('.device')].map(d=>({name:d.querySelector('.name').value,host:d.querySelector('.host').value,port:+d.querySelector('.port').value}));const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});const ans=await r.json();document.getElementById('message').textContent=ans.ok?'Guardado ✓':'Error: '+ans.error}
+function networkMode(){document.querySelectorAll('.static-net').forEach(e=>e.style.display=document.getElementById('wifi_mode').value==='static'?'block':'none')}
+async function loadNetwork(){const n=await (await fetch('/api/network-settings')).json();wifi_ssid.value=n.ssid||'';wifi_mode.value=n.mode||'dhcp';wifi_address.value=n.address||'';wifi_gateway.value=n.gateway||'';wifi_dns.value=n.dns||'';network_status.textContent=(n.deviceStatus||'').replaceAll(':',' · ');networkMode()}
+async function saveNetwork(){if(!confirm('La conexión puede cortarse o cambiar de IP. ¿Aplicar?'))return;const body={ssid:wifi_ssid.value,password:wifi_password.value,mode:wifi_mode.value,address:wifi_address.value,gateway:wifi_gateway.value,dns:wifi_dns.value};const ans=await (await fetch('/api/network-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();network_message.textContent=ans.ok?ans.message:'Error: '+ans.error}
+load();loadNetwork();
+</script></body></html>

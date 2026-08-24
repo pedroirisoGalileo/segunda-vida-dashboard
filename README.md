@@ -6,7 +6,13 @@ Este proyecto nació recuperando una **netbook educativa del gobierno argentino*
 
 La solución no depende de ese modelo: puede usarse en netbooks, notebooks y PCs x86 antiguos que puedan ejecutar Debian y tengan una pantalla compatible con framebuffer Linux.
 
-> Estado: proyecto funcional y en evolución. Las fotografías del equipo real se agregarán próximamente en [`photos/`](photos/README.md).
+> Estado: proyecto funcional y en evolución.
+
+![Netbook educativa recuperada ejecutando Segunda Vida Dashboard](photos/netbook-dashboard-funcionando.jpg)
+
+La implementación original funciona sobre una netbook de **Conectar Igualdad** con Intel Atom y 2 GB de RAM. En lugar de descartar el equipo, se aprovechó su pantalla, micrófono, webcam, Wi‑Fi y almacenamiento para crear un panel doméstico autónomo.
+
+![Detalle de los vúmetros, el clima y el RTA](photos/dashboard-detalle.jpg)
 
 ## Qué muestra
 

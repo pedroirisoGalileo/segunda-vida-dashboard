@@ -50,18 +50,15 @@ def keyboard_device():
     return None
 
 
-def pressed_key(keyboard):
+def f10_pressed(keyboard):
     if keyboard is None:
-        return None
+        return False
     try:
         raw = os.read(keyboard, INPUT_EVENT.size * 16)
-        for _, _, kind, code, value in INPUT_EVENT.iter_unpack(
-                raw[:len(raw) // INPUT_EVENT.size * INPUT_EVENT.size]):
-            if kind == EV_KEY and value == 1:
-                return code
-        return None
+        return any(kind == EV_KEY and code == KEY_F10 and value == 1
+                   for _, _, kind, code, value in INPUT_EVENT.iter_unpack(raw[:len(raw) // INPUT_EVENT.size * INPUT_EVENT.size]))
     except BlockingIOError:
-        return None
+        return False
 
 
 def configuration_menu(tty):
@@ -268,21 +265,6 @@ def render(data):
     return im
 
 
-def write_frame(memory, image):
-    memory.seek(0)
-    memory.write(image.tobytes("raw", "BGRX"))
-    memory.flush()
-
-
-def sleeping_frame(data, phase):
-    """Casi negro, pero no uniforme: evita congelar el scanout de GMA500."""
-    image = render(data).point(lambda value: value // 64)
-    # Dos píxeles imperceptibles alternan para que cada cuadro sea distinto.
-    image.putpixel((W - 1, H - 1), (phase, phase, phase))
-    image.putpixel((W - 2, H - 1), (3 - phase, 3 - phase, 3 - phase))
-    return image
-
-
 def main():
     tty = os.open(TTY, os.O_RDWR)
     fb = os.open(FB, os.O_RDWR)
@@ -294,12 +276,12 @@ def main():
     screen_awake = True
     quiet_since = time.monotonic()
     sound_average = None
-    sleeping_frame_due = 0.0
-    sleeping_phase = 0
     history = screen_history()
     try:
         while running:
-            key_code = pressed_key(keyboard)
+            if f10_pressed(keyboard):
+                configuration_menu(tty)
+                quiet_since = time.monotonic()
             data = status()
             audio = data.get("audio", {}) if data else {}
             audio_ok = bool(audio.get("available"))
@@ -313,22 +295,6 @@ def main():
                     settings.get("screen_noise_threshold", SCREEN_ACTIVE_DBA))))
             except (TypeError, ValueError):
                 noise_threshold = SCREEN_ACTIVE_DBA
-
-            if key_code is not None and not screen_awake:
-                screen_awake = True
-                quiet_since = now
-                sound_average = current_dba
-                record_screen(history, "awake", current_dba)
-
-            if key_code == KEY_F10:
-                # Redibujar antes de pasar a texto: el menú nunca debe abrir sobre
-                # el último cuadro oscuro almacenado en el framebuffer.
-                write_frame(memory, render(data))
-                configuration_menu(tty)
-                screen_awake = True
-                quiet_since = time.monotonic()
-                sleeping_frame_due = 0.0
-                continue
 
             if not audio_ok:
                 screen_awake = True
@@ -344,7 +310,9 @@ def main():
                     quiet_since = now
                 elif SCREEN_SLEEP_SECONDS > 0 and now - quiet_since >= SCREEN_SLEEP_SECONDS:
                     screen_awake = False
-                    sleeping_frame_due = 0.0
+                    memory.seek(0)
+                    memory.write(Image.new("RGB", (W, H), "black").tobytes("raw", "BGRX"))
+                    memory.flush()
                     record_screen(history, "asleep", current_dba)
             elif current_dba >= noise_threshold:
                 screen_awake = True
@@ -353,11 +321,10 @@ def main():
                 record_screen(history, "awake", current_dba)
 
             if screen_awake:
-                write_frame(memory, render(data))
-            elif now >= sleeping_frame_due:
-                sleeping_phase = 3 - sleeping_phase
-                write_frame(memory, sleeping_frame(data, sleeping_phase))
-                sleeping_frame_due = now + 0.5
+                image = render(data)
+                memory.seek(0)
+                memory.write(image.tobytes("raw", "BGRX"))
+                memory.flush()
             time.sleep(1 / 15)
     finally:
         fcntl.ioctl(tty, KDSETMODE, KD_TEXT)

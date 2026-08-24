@@ -42,14 +42,15 @@ En la máquina original el dashboard trabaja a unas 15 actualizaciones por segun
 
 ### Reposo de pantalla por silencio
 
-El servicio de framebuffer puede dibujar una imagen completamente negra después de cinco minutos sin actividad sonora sostenida. El micrófono y el análisis de audio continúan funcionando, y un sonido claro vuelve a dibujar el panel. Este mecanismo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
+El servicio de framebuffer puede dibujar una imagen completamente negra después de cinco minutos sin actividad sonora sostenida. El micrófono y el análisis de audio continúan funcionando, y un sonido que supere el umbral vuelve a dibujar el panel. Este mecanismo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
+
+Desde el menú físico (`F10`) o la administración web se puede activar o desactivar esta función y elegir un umbral entre 35 y 90 dBA. Los cambios se aplican sin reiniciar.
 
 Los valores se configuran en `dashboard-fb.service`:
 
 ```ini
 Environment=SCREEN_SLEEP_SECONDS=300
 Environment=SCREEN_ACTIVE_DBA=55
-Environment=SCREEN_WAKE_DBA=68
 ```
 
 ## Requisitos

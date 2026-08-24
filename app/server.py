@@ -58,6 +58,8 @@ DEFAULT_SETTINGS = {
     "longitude": 0.0,
     "nanopi_host": NANOPI_HOST,
     "router_host": MIKROTIK_HOST,
+    "screen_sleep_enabled": True,
+    "screen_noise_threshold": 55.0,
     "devices": [{"name": "Router", "host": MIKROTIK_HOST, "port": 80},
                 {"name": "Internet", "host": "1.1.1.1", "port": 443}],
 }
@@ -90,6 +92,10 @@ def clean_settings(value):
         "longitude": max(-180.0, min(180.0, float(value.get("longitude", current["longitude"])))),
         "nanopi_host": str(value.get("nanopi_host", current["nanopi_host"]))[:255].strip(),
         "router_host": str(value.get("router_host", current["router_host"]))[:255].strip(),
+        "screen_sleep_enabled": value.get("screen_sleep_enabled", current["screen_sleep_enabled"]) in
+                                (True, 1, "1", "true", "True", "si", "sí", "on"),
+        "screen_noise_threshold": max(35.0, min(90.0, float(
+            value.get("screen_noise_threshold", current["screen_noise_threshold"])))),
         "devices": [],
     }
     for item in value.get("devices", current["devices"])[:6]:

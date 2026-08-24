@@ -7,7 +7,8 @@ FILE = Path("/var/lib/dashboard/settings.json")
 NETWORK_FILE = Path("/var/lib/dashboard/network-settings.json")
 NETWORK_REQUEST = Path("/var/lib/dashboard/network-request.json")
 DEFAULT = {"location":"Mi localidad","latitude":0.0,"longitude":0.0,
-           "nanopi_host":"192.168.1.20","router_host":"192.168.1.1","devices":[]}
+           "nanopi_host":"192.168.1.20","router_host":"192.168.1.1","devices":[],
+           "screen_sleep_enabled":True,"screen_noise_threshold":55.0}
 
 
 def load():
@@ -33,6 +34,10 @@ def editor(stdscr):
         ["Longitud", "longitude", str(settings["longitude"])],
         ["NanoPi", "nanopi_host", str(settings["nanopi_host"])],
         ["Router", "router_host", str(settings["router_host"])],
+        ["Reposo pantalla si/no", "screen_sleep_enabled",
+         "si" if settings.get("screen_sleep_enabled", True) else "no"],
+        ["Umbral pantalla dBA", "screen_noise_threshold",
+         str(settings.get("screen_noise_threshold", 55))],
     ]
     for i, dev in enumerate(devices, 1):
         fields += [[f"Equipo {i} nombre", f"d{i}n", str(dev["name"])],
@@ -68,7 +73,11 @@ def editor(stdscr):
             try:
                 saved = {"location":values["location"], "latitude":float(values["latitude"]),
                          "longitude":float(values["longitude"]), "nanopi_host":values["nanopi_host"],
-                         "router_host":values["router_host"], "devices":[]}
+                         "router_host":values["router_host"],
+                         "screen_sleep_enabled":values["screen_sleep_enabled"].strip().lower() in
+                                                ("si", "sí", "s", "1", "true", "on"),
+                         "screen_noise_threshold":max(35.0, min(90.0, float(values["screen_noise_threshold"]))),
+                         "devices":[]}
                 for i in range(1,7):
                     if values[f"d{i}h"].strip():
                         saved["devices"].append({"name":values[f"d{i}n"].strip() or "Equipo",

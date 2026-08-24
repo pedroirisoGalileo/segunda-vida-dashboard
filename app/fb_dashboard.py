@@ -26,6 +26,7 @@ FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 running = True
 SCREEN_SLEEP_SECONDS = float(os.getenv("SCREEN_SLEEP_SECONDS", "0"))
 SCREEN_ACTIVE_DBA = float(os.getenv("SCREEN_ACTIVE_DBA", "55"))
+SCREEN_WAKE_DBA = float(os.getenv("SCREEN_WAKE_DBA", "68"))
 SCREEN_STATE_FILE = "/var/lib/dashboard/screen_state.json"
 
 
@@ -288,25 +289,13 @@ def main():
             current_dba = max(audio.get("dbaLeft", 0), audio.get("dbaRight", 0))
             now = time.monotonic()
             sound_average = current_dba if sound_average is None else 0.07 * current_dba + 0.93 * sound_average
-            settings = data.get("settings", {}) if data else {}
-            sleep_enabled = bool(settings.get("screen_sleep_enabled", True))
-            try:
-                noise_threshold = max(35.0, min(90.0, float(
-                    settings.get("screen_noise_threshold", SCREEN_ACTIVE_DBA))))
-            except (TypeError, ValueError):
-                noise_threshold = SCREEN_ACTIVE_DBA
 
             if not audio_ok:
                 screen_awake = True
                 quiet_since = now
-            elif not sleep_enabled:
-                if not screen_awake:
-                    screen_awake = True
-                    record_screen(history, "awake", current_dba)
-                quiet_since = now
             elif screen_awake:
                 # Sólo el ruido sostenido reinicia la inactividad; un pico breve no cuenta como presencia.
-                if sound_average >= noise_threshold:
+                if sound_average >= SCREEN_ACTIVE_DBA:
                     quiet_since = now
                 elif SCREEN_SLEEP_SECONDS > 0 and now - quiet_since >= SCREEN_SLEEP_SECONDS:
                     screen_awake = False
@@ -314,7 +303,7 @@ def main():
                     memory.write(Image.new("RGB", (W, H), "black").tobytes("raw", "BGRX"))
                     memory.flush()
                     record_screen(history, "asleep", current_dba)
-            elif current_dba >= noise_threshold:
+            elif current_dba >= SCREEN_WAKE_DBA:
                 screen_awake = True
                 quiet_since = now
                 sound_average = current_dba

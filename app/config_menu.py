@@ -14,6 +14,51 @@ DEFAULT = {"location":"Mi localidad","latitude":0.0,"longitude":0.0,
                             "text":"#effff8","muted":"#829a91","accent":"#58f0a5",
                             "warning":"#f4bd58","danger":"#ff626b"}}
 
+CHOICES = {
+    "screen_sleep_enabled": [("no", "Desactivado"), ("si", "Activado")],
+    "screen_sleep_minutes": [(str(value), f"{value} minutos") for value in (1, 2, 5, 10, 15, 30)],
+    "screen_noise_threshold": [(str(value), f"{value} dBA") for value in range(35, 91, 5)],
+    "theme": [
+        ("original", "Original verde"), ("oceano", "Océano azul"),
+        ("ambar", "Ámbar retro"), ("violeta", "Violeta"),
+        ("rojo", "Rojo"), ("monocromo", "Monocromo"),
+        ("personalizado", "Personalizado"),
+    ],
+    "wifi_mode": [("dhcp", "DHCP automático"), ("static", "IP fija")],
+}
+
+
+def choice_label(key, value):
+    options = CHOICES.get(key, [])
+    if not options:
+        return str(value)
+    return next((label for option, label in options if option == str(value)), options[0][1])
+
+
+def choose(stdscr, title, key, current):
+    options = CHOICES[key]
+    selected = next((index for index, (value, _) in enumerate(options) if value == str(current)), 0)
+    while True:
+        stdscr.erase()
+        height, width = stdscr.getmaxyx()
+        stdscr.addstr(1, 3, title[:max(1, width - 6)], curses.A_BOLD)
+        stdscr.addstr(2, 3, "Flechas: elegir · Enter: aceptar · Esc: cancelar"[:max(1, width - 6)])
+        top = max(0, min(selected - max(0, height - 8), len(options) - max(1, height - 6)))
+        for row, index in enumerate(range(top, min(len(options), top + height - 6)), 4):
+            marker = "● " if index == selected else "  "
+            attr = curses.A_REVERSE if index == selected else curses.A_NORMAL
+            stdscr.addstr(row, 5, (marker + options[index][1])[:max(1, width - 10)], attr)
+        stdscr.refresh()
+        pressed = stdscr.getch()
+        if pressed in (curses.KEY_UP, ord("k")):
+            selected = (selected - 1) % len(options)
+        elif pressed in (curses.KEY_DOWN, ord("j")):
+            selected = (selected + 1) % len(options)
+        elif pressed in (10, 13):
+            return options[selected][0]
+        elif pressed == 27:
+            return str(current)
+
 
 def load():
     try:
@@ -42,10 +87,10 @@ def editor(stdscr):
         ["Reposo automático si/no", "screen_sleep_enabled",
          "si" if settings.get("screen_sleep_enabled", False) else "no"],
         ["Espera reposo minutos", "screen_sleep_minutes",
-         str(settings.get("screen_sleep_minutes", 5))],
+         str(round(float(settings.get("screen_sleep_minutes", 5))))],
         ["Umbral reposo dBA", "screen_noise_threshold",
-         str(settings.get("screen_noise_threshold", 55))],
-        ["Skin", "theme", str(settings.get("theme", "original"))],
+         str(round(float(settings.get("screen_noise_threshold", 55))))],
+        ["Skin", "theme", str(settings.get("theme") or "original")],
         ["Color fondo", "color_background", custom["background"]],
         ["Color tarjetas", "color_card", custom["card"]],
         ["Color bordes", "color_edge", custom["edge"]],
@@ -72,18 +117,21 @@ def editor(stdscr):
         stdscr.addstr(2, 3, message[:w-6])
         start = max(0, min(selected - max(0, h - 8), len(fields) - max(1, h - 6)))
         for screen_row, idx in enumerate(range(start, min(len(fields), start + h - 6)), 4):
-            label, _, value = fields[idx]
+            label, field_key, value = fields[idx]
             attr = curses.A_REVERSE if idx == selected else curses.A_NORMAL
             stdscr.addstr(screen_row, 3, (label + ":")[:22].ljust(23), attr)
-            stdscr.addstr(screen_row, 27, value[:max(1,w-30)], attr)
+            stdscr.addstr(screen_row, 27, choice_label(field_key, value)[:max(1,w-30)], attr)
         stdscr.refresh(); key = stdscr.getch()
         if key in (curses.KEY_UP, ord('k')): selected = (selected - 1) % len(fields)
         elif key in (curses.KEY_DOWN, ord('j')): selected = (selected + 1) % len(fields)
         elif key in (10, 13):
-            curses.echo(); curses.curs_set(1)
-            stdscr.move(min(4 + selected - start, h - 2), 27); stdscr.clrtoeol()
-            value = stdscr.getstr(min(4 + selected - start, h - 2), 27, max(1,w-30)).decode("utf-8", "ignore")
-            curses.noecho(); curses.curs_set(0); fields[selected][2] = value
+            if fields[selected][1] in CHOICES:
+                fields[selected][2] = choose(stdscr, fields[selected][0], fields[selected][1], fields[selected][2])
+            else:
+                curses.echo(); curses.curs_set(1)
+                stdscr.move(min(4 + selected - start, h - 2), 27); stdscr.clrtoeol()
+                value = stdscr.getstr(min(4 + selected - start, h - 2), 27, max(1,w-30)).decode("utf-8", "ignore")
+                curses.noecho(); curses.curs_set(0); fields[selected][2] = value
         elif key == curses.KEY_F2:
             values = {key:value for _, key, value in fields}
             try:

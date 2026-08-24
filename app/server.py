@@ -61,6 +61,12 @@ DEFAULT_SETTINGS = {
     "screen_sleep_enabled": False,
     "screen_sleep_minutes": 5,
     "screen_noise_threshold": 55.0,
+    "theme": "original",
+    "custom_colors": {
+        "background": "#07100f", "card": "#0e1a18", "edge": "#244239",
+        "text": "#effff8", "muted": "#829a91", "accent": "#58f0a5",
+        "warning": "#f4bd58", "danger": "#ff626b",
+    },
     "devices": [{"name": "Router", "host": MIKROTIK_HOST, "port": 80},
                 {"name": "Internet", "host": "1.1.1.1", "port": 443}],
 }
@@ -87,6 +93,14 @@ def load_screen_state():
 
 def clean_settings(value):
     current = load_settings()
+    theme = str(value.get("theme", current["theme"])).strip().lower()
+    if theme not in ("original", "oceano", "ambar", "violeta", "rojo", "monocromo", "personalizado"):
+        theme = "original"
+    custom_source = value.get("custom_colors", current["custom_colors"])
+    custom_colors = {}
+    for key, fallback in DEFAULT_SETTINGS["custom_colors"].items():
+        color = str(custom_source.get(key, fallback)).strip().lower()
+        custom_colors[key] = color if re.fullmatch(r"#[0-9a-f]{6}", color) else fallback
     result = {
         "location": str(value.get("location", current["location"]))[:60].strip() or current["location"],
         "latitude": max(-90.0, min(90.0, float(value.get("latitude", current["latitude"])))),
@@ -99,6 +113,8 @@ def clean_settings(value):
             "screen_sleep_minutes", current["screen_sleep_minutes"])))),
         "screen_noise_threshold": max(35.0, min(90.0, float(value.get(
             "screen_noise_threshold", current["screen_noise_threshold"])))),
+        "theme": theme,
+        "custom_colors": custom_colors,
         "devices": [],
     }
     for item in value.get("devices", current["devices"])[:6]:

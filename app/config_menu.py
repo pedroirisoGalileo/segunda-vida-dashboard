@@ -9,7 +9,10 @@ NETWORK_REQUEST = Path("/var/lib/dashboard/network-request.json")
 DEFAULT = {"location":"Mi localidad","latitude":0.0,"longitude":0.0,
            "nanopi_host":"192.168.1.20","router_host":"192.168.1.1","devices":[],
            "screen_sleep_enabled":False,"screen_sleep_minutes":5,
-           "screen_noise_threshold":55.0}
+           "screen_noise_threshold":55.0,"theme":"original",
+           "custom_colors":{"background":"#07100f","card":"#0e1a18","edge":"#244239",
+                            "text":"#effff8","muted":"#829a91","accent":"#58f0a5",
+                            "warning":"#f4bd58","danger":"#ff626b"}}
 
 
 def load():
@@ -29,6 +32,7 @@ def editor(stdscr):
     devices = (settings.get("devices") or [])[:6]
     while len(devices) < 6:
         devices.append({"name":"", "host":"", "port":80})
+    custom = {**DEFAULT["custom_colors"], **(settings.get("custom_colors") or {})}
     fields = [
         ["Localidad", "location", str(settings["location"])],
         ["Latitud", "latitude", str(settings["latitude"])],
@@ -41,6 +45,15 @@ def editor(stdscr):
          str(settings.get("screen_sleep_minutes", 5))],
         ["Umbral reposo dBA", "screen_noise_threshold",
          str(settings.get("screen_noise_threshold", 55))],
+        ["Skin", "theme", str(settings.get("theme", "original"))],
+        ["Color fondo", "color_background", custom["background"]],
+        ["Color tarjetas", "color_card", custom["card"]],
+        ["Color bordes", "color_edge", custom["edge"]],
+        ["Color texto", "color_text", custom["text"]],
+        ["Color secundario", "color_muted", custom["muted"]],
+        ["Color acento", "color_accent", custom["accent"]],
+        ["Color advertencia", "color_warning", custom["warning"]],
+        ["Color alarma", "color_danger", custom["danger"]],
     ]
     for i, dev in enumerate(devices, 1):
         fields += [[f"Equipo {i} nombre", f"d{i}n", str(dev["name"])],
@@ -81,6 +94,10 @@ def editor(stdscr):
                                                 ("si", "sí", "s", "1", "true", "on"),
                          "screen_sleep_minutes":max(1, min(30, int(values["screen_sleep_minutes"]))),
                          "screen_noise_threshold":max(35.0, min(90.0, float(values["screen_noise_threshold"]))),
+                         "theme":values["theme"].strip().lower(),
+                         "custom_colors":{name:values[f"color_{name}"].strip().lower()
+                                          for name in ("background", "card", "edge", "text", "muted",
+                                                       "accent", "warning", "danger")},
                          "devices":[]}
                 for i in range(1,7):
                     if values[f"d{i}h"].strip():

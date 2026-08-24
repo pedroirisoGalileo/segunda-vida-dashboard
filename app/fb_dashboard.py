@@ -21,6 +21,15 @@ INPUT_EVENT = struct.Struct("llHHI")
 EV_KEY, KEY_F2, KEY_F10 = 1, 60, 68
 BG, CARD, EDGE = "#07100f", "#0e1a18", "#244239"
 INK, MUTED, GREEN, AMBER, RED = "#effff8", "#829a91", "#58f0a5", "#f4bd58", "#ff626b"
+THEMES = {
+    "original": ("#07100f", "#0e1a18", "#244239", "#effff8", "#829a91", "#58f0a5", "#f4bd58", "#ff626b"),
+    "oceano": ("#06101a", "#0b1b29", "#1c4055", "#eef9ff", "#7895a5", "#45c8ff", "#ffd166", "#ff6577"),
+    "ambar": ("#120d05", "#211709", "#4b3515", "#fff4da", "#a58d67", "#ffb52e", "#ffe08a", "#ff6b45"),
+    "violeta": ("#0d0815", "#191025", "#3c2755", "#fbf2ff", "#9b87aa", "#c98cff", "#ffd166", "#ff668f"),
+    "rojo": ("#120707", "#211010", "#522525", "#fff3f0", "#a78984", "#ff6659", "#ffc857", "#ff304f"),
+    "monocromo": ("#080a09", "#131615", "#343a37", "#f1f4f2", "#8d9691", "#c8d0cc", "#e1e5e3", "#ffffff"),
+}
+CUSTOM_KEYS = ("background", "card", "edge", "text", "muted", "accent", "warning", "danger")
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 running = True
@@ -34,6 +43,28 @@ def font(size, bold=False):
 
 F10, F12, F14, F18, F22, F46, F60 = font(10), font(12), font(14), font(18, True), font(22, True), font(46, True), font(60, True)
 F30, F78, F118 = font(30, True), font(78, True), font(118, True)
+
+
+def valid_color(value, fallback):
+    value = str(value).strip().lower()
+    return value if len(value) == 7 and value[0] == "#" and all(c in "0123456789abcdef" for c in value[1:]) else fallback
+
+
+def apply_theme(data):
+    global BG, CARD, EDGE, INK, MUTED, GREEN, AMBER, RED
+    settings = (data or {}).get("settings", {})
+    name = str(settings.get("theme", "original")).lower()
+    colors = THEMES.get(name, THEMES["original"])
+    if name == "personalizado":
+        source = settings.get("custom_colors") or {}
+        colors = tuple(valid_color(source.get(key, fallback), fallback)
+                       for key, fallback in zip(CUSTOM_KEYS, THEMES["original"]))
+    BG, CARD, EDGE, INK, MUTED, GREEN, AMBER, RED = colors
+
+
+def dim_color(value, factor):
+    red, green, blue = (int(value[index:index + 2], 16) for index in (1, 3, 5))
+    return f"#{round(red * factor):02x}{round(green * factor):02x}{round(blue * factor):02x}"
 
 
 def stop(*_):
@@ -109,7 +140,9 @@ def status():
         return None
 
 
-def text(draw, xy, value, fill=INK, f=F14, anchor=None):
+def text(draw, xy, value, fill=None, f=F14, anchor=None):
+    if fill is None:
+        fill = INK
     draw.text(xy, str(value), font=f, fill=fill, anchor=anchor)
 
 
@@ -120,29 +153,31 @@ def card(draw, box, eyebrow, title):
     text(draw, (x, y + 18), title, INK, F18)
 
 
-def weather_icon(draw, x, y, code, is_day, background=CARD):
+def weather_icon(draw, x, y, code, is_day, background=None):
+    if background is None:
+        background = CARD
     if code is None:
         text(draw, (x, y), "?", MUTED, F46)
         return
     if code <= 2 and is_day:
         cx, cy, radius = x + 28, y + 27, 17
-        draw.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), fill="#ffd05a")
+        draw.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), fill=AMBER)
         for dx, dy in ((0,-28),(0,28),(-28,0),(28,0),(-20,-20),(20,-20),(-20,20),(20,20)):
-            draw.line((cx + dx*.70, cy + dy*.70, cx + dx, cy + dy), fill="#ffd05a", width=3)
+            draw.line((cx + dx*.70, cy + dy*.70, cx + dx, cy + dy), fill=AMBER, width=3)
     elif code <= 2:
-        draw.ellipse((x + 8, y + 3, x + 48, y + 43), fill="#ffe9a6")
+        draw.ellipse((x + 8, y + 3, x + 48, y + 43), fill=AMBER)
         draw.ellipse((x + 23, y - 3, x + 56, y + 34), fill=background)
         for sx, sy in ((61,6),(72,24),(55,35)):
-            draw.ellipse((x+sx, y+sy, x+sx+4, y+sy+4), fill="#dce9e4")
+            draw.ellipse((x+sx, y+sy, x+sx+4, y+sy+4), fill=MUTED)
     if code > 0:
-        cloud = "#dce9e4" if is_day else "#a9bab5"
+        cloud = INK if is_day else MUTED
         draw.ellipse((x + 18, y + 23, x + 51, y + 50), fill=cloud)
         draw.ellipse((x + 38, y + 13, x + 75, y + 50), fill=cloud)
         draw.ellipse((x + 58, y + 27, x + 84, y + 51), fill=cloud)
         draw.rounded_rectangle((x + 15, y + 34, x + 86, y + 53), 9, fill=cloud)
     if 51 <= code <= 99:
         for i in range(4):
-            draw.line((x + 24 + i*15, y + 60, x + 19 + i*15, y + 72), fill="#69bfff", width=3)
+            draw.line((x + 24 + i*15, y + 60, x + 19 + i*15, y + 72), fill=GREEN, width=3)
 
 
 def meter(draw, x, top, bottom, value, label):
@@ -152,7 +187,7 @@ def meter(draw, x, top, bottom, value, label):
     lit = round(max(0, min(1, value or 0)) * count)
     for n in range(count):
         level = count - n
-        color = "#1b2a26"
+        color = dim_color(EDGE, 0.65)
         if level <= lit:
             color = RED if level > 24 else AMBER if level > 18 else GREEN
         y = top + n * (seg_h + gap)
@@ -160,11 +195,12 @@ def meter(draw, x, top, bottom, value, label):
 
 
 def render(data):
+    apply_theme(data)
     im = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(im)
-    text(d, (22, 28), "P", "#062015", F22)
+    text(d, (22, 28), "P", BG, F22)
     d.rounded_rectangle((17, 17, 63, 63), 12, fill=GREEN)
-    text(d, (40, 40), "P", "#062015", F22, "mm")
+    text(d, (40, 40), "P", BG, F22, "mm")
     text(d, (76, 22), "SEGUNDA VIDA", GREEN, F10)
     text(d, (76, 40), "Panel ambiental", INK, F18)
     now = datetime.now()
@@ -190,7 +226,7 @@ def render(data):
     for db in (90, 80, 70, 60, 50, 40, 30):
         level = max(0, min(1, (db - 30) / 60))
         y = round(480 - level * (480 - 195))
-        d.line((176, y, 218, y), fill="#355047", width=1)
+        d.line((176, y, 218, y), fill=EDGE, width=1)
         text(d, (197, y - 1), str(db), RED if db >= 90 else AMBER if db >= 70 else MUTED, F10, "mm")
     current_dba = max(audio.get("dbaLeft", 0), audio.get("dbaRight", 0))
     category = "Ruido elevado" if current_dba >= 70 else "Ambiente moderado" if current_dba >= 55 else "Ambiente tranquilo"
@@ -241,7 +277,7 @@ def render(data):
         column, row = i // 3, i % 3
         x, y = 720 + column * 140, 315 + row * 24
         if ok:
-            d.ellipse((x - 1, y - 2, x + 13, y + 12), fill="#00ff5a")
+            d.ellipse((x - 1, y - 2, x + 13, y + 12), fill=GREEN)
         else:
             d.line((x, y, x + 10, y + 10), fill=RED, width=3)
             d.line((x + 10, y, x, y + 10), fill=RED, width=3)
@@ -260,7 +296,7 @@ def render(data):
         d.rounded_rectangle((x, y, x + bar_width, chart_bottom), 2, fill=color)
     for db in (-40, -20):
         y = int(chart_bottom - ((db + 55) / 50) * (chart_bottom - chart_top))
-        d.line((chart_left, y, chart_right, y), fill="#244239", width=1)
+        d.line((chart_left, y, chart_right, y), fill=EDGE, width=1)
     for i, label in ((0,"20"),(7,"100"),(13,"400"),(17,"1k"),(23,"4k"),(30,"20k")):
         x = int(chart_left + i * bar_step + bar_width / 2)
         text(d, (x, 533), label, MUTED, F10, "mm")
@@ -283,15 +319,16 @@ def rest_date(now):
 
 def render_rest(data):
     """Pantalla oscura informativa; nunca produce un framebuffer negro uniforme."""
-    background = "#010504"
-    primary, secondary, faint = "#6f817a", "#50615b", "#293631"
+    apply_theme(data)
+    background = dim_color(BG, 0.38)
+    primary, secondary, faint = dim_color(INK, 0.48), dim_color(MUTED, 0.58), dim_color(EDGE, 0.72)
     image = Image.new("RGB", (W, H), background)
     draw = ImageDraw.Draw(image)
     now = datetime.now()
     weather = (data or {}).get("weather", {})
     sensor = (data or {}).get("sensor", {})
 
-    draw.line((512, 58, 512, 542), fill="#101a17", width=1)
+    draw.line((512, 58, 512, 542), fill=dim_color(EDGE, 0.55), width=1)
 
     sunrise, sunset = short_time(weather.get("sunrise")), short_time(weather.get("sunset"))
     text(draw, (256, 82), f"☀  AMANECE {sunrise}     ☾  ANOCHECE {sunset}", faint, F14, "mm")
@@ -303,6 +340,7 @@ def render_rest(data):
         is_day = 7 <= now.hour < 19
     icon = Image.new("RGB", (110, 88), background)
     weather_icon(ImageDraw.Draw(icon), 8, 7, weather.get("code"), is_day, background)
+    icon = icon.point(lambda value: round(value * 0.52))
     icon = icon.resize((176, 141), Image.Resampling.LANCZOS)
     image.paste(icon, (565, 145))
     outside = "--°" if weather.get("temperature") is None else f"{round(weather['temperature'])}°"

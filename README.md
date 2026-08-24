@@ -52,6 +52,10 @@ En vez de apagar o escribir un framebuffer negro, el panel puede pasar a una vis
 
 El modo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
 
+### Skins de color
+
+Desde `F10` o la administración web se puede elegir entre seis paletas que no modifican la distribución ni los datos: Original, Océano, Ámbar, Violeta, Rojo y Monocromo. La opción Personalizado permite seleccionar por separado fondo, tarjetas, bordes, texto, texto secundario, acento, advertencia y alarma mediante colores hexadecimales `#RRGGBB`.
+
 ## Requisitos
 
 ### Hardware mínimo orientativo

@@ -6,6 +6,9 @@ Conflicts=getty@tty1.service dashboard-kiosk.service
 
 [Service]
 Type=simple
+Environment=SCREEN_SLEEP_SECONDS=300
+Environment=SCREEN_ACTIVE_DBA=55
+Environment=SCREEN_WAKE_DBA=68
 ExecStart=/usr/bin/python3 /opt/segunda-vida-dashboard/fb_dashboard.py
 Restart=always
 RestartSec=3

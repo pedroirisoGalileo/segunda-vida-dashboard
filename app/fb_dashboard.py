@@ -18,16 +18,14 @@ FB = "/dev/fb0"
 TTY = "/dev/tty1"
 KDSETMODE, KD_TEXT, KD_GRAPHICS = 0x4B3A, 0x00, 0x01
 INPUT_EVENT = struct.Struct("llHHI")
-EV_KEY, KEY_F10 = 1, 68
+EV_KEY, KEY_F2, KEY_F10 = 1, 60, 68
 BG, CARD, EDGE = "#07100f", "#0e1a18", "#244239"
 INK, MUTED, GREEN, AMBER, RED = "#effff8", "#829a91", "#58f0a5", "#f4bd58", "#ff626b"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 running = True
-SCREEN_SLEEP_SECONDS = float(os.getenv("SCREEN_SLEEP_SECONDS", "0"))
-SCREEN_ACTIVE_DBA = float(os.getenv("SCREEN_ACTIVE_DBA", "55"))
-SCREEN_WAKE_DBA = float(os.getenv("SCREEN_WAKE_DBA", "68"))
 SCREEN_STATE_FILE = "/var/lib/dashboard/screen_state.json"
+FORCED_REST_SECONDS = 300
 
 
 def font(size, bold=False):
@@ -35,6 +33,7 @@ def font(size, bold=False):
 
 
 F10, F12, F14, F18, F22, F46, F60 = font(10), font(12), font(14), font(18, True), font(22, True), font(46, True), font(60, True)
+F30, F78, F118 = font(30, True), font(78, True), font(118, True)
 
 
 def stop(*_):
@@ -51,15 +50,18 @@ def keyboard_device():
     return None
 
 
-def f10_pressed(keyboard):
+def pressed_key(keyboard):
     if keyboard is None:
-        return False
+        return None
     try:
         raw = os.read(keyboard, INPUT_EVENT.size * 16)
-        return any(kind == EV_KEY and code == KEY_F10 and value == 1
-                   for _, _, kind, code, value in INPUT_EVENT.iter_unpack(raw[:len(raw) // INPUT_EVENT.size * INPUT_EVENT.size]))
+        for _, _, kind, code, value in INPUT_EVENT.iter_unpack(
+                raw[:len(raw) // INPUT_EVENT.size * INPUT_EVENT.size]):
+            if kind == EV_KEY and value == 1:
+                return code
+        return None
     except BlockingIOError:
-        return False
+        return None
 
 
 def configuration_menu(tty):
@@ -118,7 +120,7 @@ def card(draw, box, eyebrow, title):
     text(draw, (x, y + 18), title, INK, F18)
 
 
-def weather_icon(draw, x, y, code, is_day):
+def weather_icon(draw, x, y, code, is_day, background=CARD):
     if code is None:
         text(draw, (x, y), "?", MUTED, F46)
         return
@@ -129,7 +131,7 @@ def weather_icon(draw, x, y, code, is_day):
             draw.line((cx + dx*.70, cy + dy*.70, cx + dx, cy + dy), fill="#ffd05a", width=3)
     elif code <= 2:
         draw.ellipse((x + 8, y + 3, x + 48, y + 43), fill="#ffe9a6")
-        draw.ellipse((x + 23, y - 3, x + 56, y + 34), fill=CARD)
+        draw.ellipse((x + 23, y - 3, x + 56, y + 34), fill=background)
         for sx, sy in ((61,6),(72,24),(55,35)):
             draw.ellipse((x+sx, y+sy, x+sx+4, y+sy+4), fill="#dce9e4")
     if code > 0:
@@ -266,6 +268,61 @@ def render(data):
     return im
 
 
+def short_time(value):
+    if not value:
+        return "--:--"
+    return str(value).rsplit("T", 1)[-1][:5]
+
+
+def rest_date(now):
+    days = ("LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM")
+    months = ("ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+              "JUL", "AGO", "SEP", "OCT", "NOV", "DIC")
+    return f"{days[now.weekday()]} {now.day:02d} {months[now.month - 1]}."
+
+
+def render_rest(data):
+    """Pantalla oscura informativa; nunca produce un framebuffer negro uniforme."""
+    background = "#010504"
+    primary, secondary, faint = "#6f817a", "#50615b", "#293631"
+    image = Image.new("RGB", (W, H), background)
+    draw = ImageDraw.Draw(image)
+    now = datetime.now()
+    weather = (data or {}).get("weather", {})
+    sensor = (data or {}).get("sensor", {})
+
+    draw.line((512, 58, 512, 542), fill="#101a17", width=1)
+
+    sunrise, sunset = short_time(weather.get("sunrise")), short_time(weather.get("sunset"))
+    text(draw, (256, 82), f"☀  AMANECE {sunrise}     ☾  ANOCHECE {sunset}", faint, F14, "mm")
+    text(draw, (256, 265), now.strftime("%H:%M"), primary, F118, "mm")
+    text(draw, (256, 390), rest_date(now), secondary, F30, "mm")
+
+    is_day = weather.get("isDay")
+    if is_day is None:
+        is_day = 7 <= now.hour < 19
+    icon = Image.new("RGB", (110, 88), background)
+    weather_icon(ImageDraw.Draw(icon), 8, 7, weather.get("code"), is_day, background)
+    icon = icon.resize((176, 141), Image.Resampling.LANCZOS)
+    image.paste(icon, (565, 145))
+    outside = "--°" if weather.get("temperature") is None else f"{round(weather['temperature'])}°"
+    text(draw, (850, 220), outside, primary, F78, "mm")
+
+    inside = "--°" if sensor.get("temperature") is None else f"{sensor['temperature']:.1f}°".replace(".", ",")
+    high = "--°" if weather.get("high") is None else f"{round(weather['high'])}°"
+    low = "--°" if weather.get("low") is None else f"{round(weather['low'])}°"
+    for x, label, value in ((610, "INTERIOR", inside), (770, "MÁX", high), (920, "MÍN", low)):
+        text(draw, (x, 375), label, faint, F12, "mm")
+        text(draw, (x, 420), value, secondary, F30, "mm")
+    return image
+
+
+def write_frame(memory, image):
+    memory.seek(0)
+    memory.write(image.tobytes("raw", "BGRX"))
+    memory.flush()
+
+
 def main():
     tty = os.open(TTY, os.O_RDWR)
     fb = os.open(FB, os.O_RDWR)
@@ -277,43 +334,80 @@ def main():
     screen_awake = True
     quiet_since = time.monotonic()
     sound_average = None
+    forced_rest_until = 0.0
+    rest_frame_due = 0.0
     history = screen_history()
     try:
         while running:
-            if f10_pressed(keyboard):
-                configuration_menu(tty)
-                quiet_since = time.monotonic()
+            key_code = pressed_key(keyboard)
             data = status()
             audio = data.get("audio", {}) if data else {}
             audio_ok = bool(audio.get("available"))
             current_dba = max(audio.get("dbaLeft", 0), audio.get("dbaRight", 0))
             now = time.monotonic()
             sound_average = current_dba if sound_average is None else 0.07 * current_dba + 0.93 * sound_average
+            settings = data.get("settings", {}) if data else {}
+            auto_rest = bool(settings.get("screen_sleep_enabled", False))
+            try:
+                rest_seconds = max(60, min(1800, int(settings.get("screen_sleep_minutes", 5)) * 60))
+                noise_threshold = max(35.0, min(90.0, float(settings.get("screen_noise_threshold", 55))))
+            except (TypeError, ValueError):
+                rest_seconds, noise_threshold = 300, 55.0
 
-            if not audio_ok:
+            if key_code == KEY_F2:
+                if forced_rest_until > now:
+                    forced_rest_until = 0.0
+                    screen_awake = True
+                    quiet_since = now
+                    record_screen(history, "awake", current_dba)
+                else:
+                    forced_rest_until = now + FORCED_REST_SECONDS
+                    screen_awake = False
+                    rest_frame_due = 0.0
+                    record_screen(history, "asleep", current_dba)
+
+            if key_code == KEY_F10:
+                forced_rest_until = 0.0
+                screen_awake = True
+                write_frame(memory, render(data))
+                configuration_menu(tty)
+                quiet_since = time.monotonic()
+                rest_frame_due = 0.0
+                continue
+
+            if forced_rest_until and now >= forced_rest_until:
+                forced_rest_until = 0.0
+                screen_awake = True
+                quiet_since = now
+                sound_average = current_dba
+                record_screen(history, "awake", current_dba)
+
+            forced_rest = forced_rest_until > now
+
+            if forced_rest:
+                pass
+            elif not audio_ok or not auto_rest:
                 screen_awake = True
                 quiet_since = now
             elif screen_awake:
                 # Sólo el ruido sostenido reinicia la inactividad; un pico breve no cuenta como presencia.
-                if sound_average >= SCREEN_ACTIVE_DBA:
+                if sound_average >= noise_threshold:
                     quiet_since = now
-                elif SCREEN_SLEEP_SECONDS > 0 and now - quiet_since >= SCREEN_SLEEP_SECONDS:
+                elif now - quiet_since >= rest_seconds:
                     screen_awake = False
-                    memory.seek(0)
-                    memory.write(Image.new("RGB", (W, H), "black").tobytes("raw", "BGRX"))
-                    memory.flush()
+                    rest_frame_due = 0.0
                     record_screen(history, "asleep", current_dba)
-            elif current_dba >= SCREEN_WAKE_DBA:
+            elif current_dba >= noise_threshold or key_code is not None:
                 screen_awake = True
                 quiet_since = now
                 sound_average = current_dba
                 record_screen(history, "awake", current_dba)
 
             if screen_awake:
-                image = render(data)
-                memory.seek(0)
-                memory.write(image.tobytes("raw", "BGRX"))
-                memory.flush()
+                write_frame(memory, render(data))
+            elif now >= rest_frame_due:
+                write_frame(memory, render_rest(data))
+                rest_frame_due = now + 0.5
             time.sleep(1 / 15)
     finally:
         fcntl.ioctl(tty, KDSETMODE, KD_TEXT)

@@ -10,6 +10,11 @@
 <label>Latitud<input id="latitude" type="number" step="any"></label><label>Longitud<input id="longitude" type="number" step="any"></label>
 <label>IP o nombre del router<input id="router_host"></label>
 </div></section>
+<section class="card"><h2>Modo reposo</h2><p>Muestra reloj, fecha y clima en una pantalla oscura que continúa actualizándose. <code>F2</code> lo fuerza o lo cancela manualmente.</p><div class="grid">
+<label>Reposo automático<select id="screen_sleep_enabled"><option value="true">Activado</option><option value="false">Desactivado</option></select></label>
+<label>Espera (minutos)<input id="screen_sleep_minutes" type="number" min="1" max="30" step="1"></label>
+<label>Umbral sonoro (dBA)<input id="screen_noise_threshold" type="number" min="35" max="90" step="1"></label>
+</div></section>
 <section class="card"><h2>Equipos monitoreados</h2><p>Hasta seis destinos. El puerto permite comprobar un servicio concreto, por ejemplo 80 web, 22 SSH o 443 HTTPS.</p><div id="devices"></div><button class="secondary" type="button" onclick="addDevice()">+ Agregar equipo</button></section>
 <section class="card"><h2>Wi‑Fi e IP</h2><p>Dejá la contraseña vacía para conservar la actual. Una IP fija debe incluir el prefijo, por ejemplo <code>/24</code>.</p><div class="grid">
 <label>Red Wi‑Fi (SSID)<input id="wifi_ssid"></label><label>Contraseña Wi‑Fi<input id="wifi_password" type="password" placeholder="Sin cambios"></label>
@@ -20,12 +25,12 @@
 <section class="card"><button onclick="save()">Guardar configuración</button><span id="message"></span></section>
 <section class="card"><h2>Cámara</h2><p>La imagen sólo se solicita al presionar el botón.</p><button onclick="photo.src='/api/camera.jpg?t='+Date.now();photo.hidden=false">Tomar fotografía</button><img id="photo" hidden alt="Fotografía de la webcam"></section>
 </main><script>
-const fields=['location','nanopi_host','latitude','longitude','router_host'];
+const fields=['location','nanopi_host','latitude','longitude','router_host','screen_sleep_minutes','screen_noise_threshold'];
 function row(v={name:'Equipo',host:'',port:80}){const d=document.createElement('div');d.className='device';d.innerHTML=`<input class="name" placeholder="Nombre" value="${esc(v.name)}"><input class="host" placeholder="IP o nombre" value="${esc(v.host)}"><input class="port" type="number" min="1" max="65535" value="${Number(v.port)||80}">`;return d}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function addDevice(v){const box=document.getElementById('devices');if(box.children.length<6)box.appendChild(row(v))}
-async function load(){const r=await fetch('/api/settings');const s=await r.json();fields.forEach(k=>document.getElementById(k).value=s[k]);s.devices.forEach(addDevice)}
-async function save(){const s={};fields.forEach(k=>s[k]=document.getElementById(k).value);s.devices=[...document.querySelectorAll('.device')].map(d=>({name:d.querySelector('.name').value,host:d.querySelector('.host').value,port:+d.querySelector('.port').value}));const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});const ans=await r.json();document.getElementById('message').textContent=ans.ok?'Guardado ✓':'Error: '+ans.error}
+async function load(){const r=await fetch('/api/settings');const s=await r.json();fields.forEach(k=>document.getElementById(k).value=s[k]);screen_sleep_enabled.value=String(s.screen_sleep_enabled);s.devices.forEach(addDevice)}
+async function save(){const s={};fields.forEach(k=>s[k]=document.getElementById(k).value);s.screen_sleep_enabled=screen_sleep_enabled.value==='true';s.devices=[...document.querySelectorAll('.device')].map(d=>({name:d.querySelector('.name').value,host:d.querySelector('.host').value,port:+d.querySelector('.port').value}));const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});const ans=await r.json();document.getElementById('message').textContent=ans.ok?'Guardado ✓':'Error: '+ans.error}
 function networkMode(){document.querySelectorAll('.static-net').forEach(e=>e.style.display=document.getElementById('wifi_mode').value==='static'?'block':'none')}
 async function loadNetwork(){const n=await (await fetch('/api/network-settings')).json();wifi_ssid.value=n.ssid||'';wifi_mode.value=n.mode||'dhcp';wifi_address.value=n.address||'';wifi_gateway.value=n.gateway||'';wifi_dns.value=n.dns||'';network_status.textContent=(n.deviceStatus||'').replaceAll(':',' · ');networkMode()}
 async function saveNetwork(){if(!confirm('La conexión puede cortarse o cambiar de IP. ¿Aplicar?'))return;const body={ssid:wifi_ssid.value,password:wifi_password.value,mode:wifi_mode.value,address:wifi_address.value,gateway:wifi_gateway.value,dns:wifi_dns.value};const ans=await (await fetch('/api/network-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();network_message.textContent=ans.ok?ans.message:'Error: '+ans.error}

@@ -48,7 +48,7 @@ state = {
     "sensor": {"temperature": None, "humidity": None, "age": None, "online": False},
     "network": {"router": False, "nanopi": False, "internet": False, "devices": []},
     "wan": {"ip": None, "isp": None, "download": None, "upload": None, "latency": None, "tested": None},
-    "weather": {"temperature": None, "apparent": None, "humidity": None, "code": None, "wind": None, "high": None, "low": None, "isDay": None, "online": False},
+    "weather": {"temperature": None, "apparent": None, "humidity": None, "code": None, "wind": None, "high": None, "low": None, "sunrise": None, "sunset": None, "isDay": None, "online": False},
     "router_wan": {"download": 0.0, "upload": 0.0, "link": None, "online": False},
 }
 
@@ -58,6 +58,9 @@ DEFAULT_SETTINGS = {
     "longitude": 0.0,
     "nanopi_host": NANOPI_HOST,
     "router_host": MIKROTIK_HOST,
+    "screen_sleep_enabled": False,
+    "screen_sleep_minutes": 5,
+    "screen_noise_threshold": 55.0,
     "devices": [{"name": "Router", "host": MIKROTIK_HOST, "port": 80},
                 {"name": "Internet", "host": "1.1.1.1", "port": 443}],
 }
@@ -90,6 +93,12 @@ def clean_settings(value):
         "longitude": max(-180.0, min(180.0, float(value.get("longitude", current["longitude"])))),
         "nanopi_host": str(value.get("nanopi_host", current["nanopi_host"]))[:255].strip(),
         "router_host": str(value.get("router_host", current["router_host"]))[:255].strip(),
+        "screen_sleep_enabled": value.get("screen_sleep_enabled", current["screen_sleep_enabled"]) in
+                                (True, 1, "1", "true", "True", "si", "sí", "on"),
+        "screen_sleep_minutes": max(1, min(30, int(value.get(
+            "screen_sleep_minutes", current["screen_sleep_minutes"])))),
+        "screen_noise_threshold": max(35.0, min(90.0, float(value.get(
+            "screen_noise_threshold", current["screen_noise_threshold"])))),
         "devices": [],
     }
     for item in value.get("devices", current["devices"])[:6]:
@@ -270,7 +279,7 @@ def read_weather():
     params = urllib.parse.urlencode({
         "latitude": settings["latitude"], "longitude": settings["longitude"],
         "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day",
-        "daily": "temperature_2m_max,temperature_2m_min", "timezone": "America/Argentina/Buenos_Aires",
+        "daily": "temperature_2m_max,temperature_2m_min,sunrise,sunset", "timezone": "America/Argentina/Buenos_Aires",
         "forecast_days": 1,
     })
     try:
@@ -280,7 +289,8 @@ def read_weather():
             "temperature": current["temperature_2m"], "apparent": current["apparent_temperature"],
             "humidity": current["relative_humidity_2m"], "code": current["weather_code"],
             "wind": current["wind_speed_10m"], "high": daily["temperature_2m_max"][0],
-            "low": daily["temperature_2m_min"][0], "isDay": bool(current["is_day"]), "online": True,
+            "low": daily["temperature_2m_min"][0], "sunrise": daily["sunrise"][0],
+            "sunset": daily["sunset"][0], "isDay": bool(current["is_day"]), "online": True,
         }
     except Exception:
         return dict(state["weather"], online=False)

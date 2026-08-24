@@ -40,6 +40,18 @@ Estado del sistema ────────────────────�
 
 En la máquina original el dashboard trabaja a unas 15 actualizaciones por segundo. El RTA usa una FFT de 8192 puntos y suavizado de ataque/caída.
 
+### Modo reposo informativo
+
+En vez de apagar o escribir un framebuffer negro, el panel puede pasar a una vista oscura que sigue actualizándose. Muestra hora, fecha completa, amanecer, anochecer, clima exterior, temperatura interior, máxima y mínima. Esto evita los bloqueos observados al intentar dejar una imagen negra estática en Intel GMA500.
+
+- `F2`: fuerza el modo reposo durante cinco minutos; otra pulsación lo cancela.
+- `F10`: vuelve al panel y abre la configuración.
+- Reposo automático: configurable entre 1 y 30 minutos y con umbral de 35 a 90 dBA.
+- En reposo automático, cualquier tecla o un sonido sobre el umbral despierta el panel.
+- En la vista forzada con `F2`, el ruido no interrumpe los cinco minutos.
+
+El modo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
+
 ## Requisitos
 
 ### Hardware mínimo orientativo

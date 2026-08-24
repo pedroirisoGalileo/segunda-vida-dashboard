@@ -40,18 +40,6 @@ Estado del sistema ────────────────────�
 
 En la máquina original el dashboard trabaja a unas 15 actualizaciones por segundo. El RTA usa una FFT de 8192 puntos y suavizado de ataque/caída.
 
-### Reposo de pantalla por silencio
-
-El servicio de framebuffer puede dibujar una imagen completamente negra después de cinco minutos sin actividad sonora sostenida. El micrófono y el análisis de audio continúan funcionando, y un sonido claro vuelve a dibujar el panel. Este mecanismo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
-
-Los valores se configuran en `dashboard-fb.service`:
-
-```ini
-Environment=SCREEN_SLEEP_SECONDS=300
-Environment=SCREEN_ACTIVE_DBA=55
-Environment=SCREEN_WAKE_DBA=68
-```
-
 ## Requisitos
 
 ### Hardware mínimo orientativo

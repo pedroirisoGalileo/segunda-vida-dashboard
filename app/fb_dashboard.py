@@ -10,6 +10,7 @@ import subprocess
 import time
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -98,7 +99,8 @@ def pressed_key(keyboard):
 def configuration_menu(tty):
     fcntl.ioctl(tty, KDSETMODE, KD_TEXT)
     try:
-        subprocess.run(["/usr/bin/python3", "/opt/segunda-vida-dashboard/config_menu.py"],
+        menu = Path(__file__).resolve().with_name("config_menu.py")
+        subprocess.run(["/usr/bin/python3", str(menu)],
                        stdin=tty, stdout=tty, stderr=tty, check=False)
     finally:
         fcntl.ioctl(tty, KDSETMODE, KD_GRAPHICS)

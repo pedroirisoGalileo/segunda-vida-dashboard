@@ -42,7 +42,7 @@ En la máquina original el dashboard trabaja a unas 15 actualizaciones por segun
 
 ### Reposo de pantalla por silencio
 
-El servicio de framebuffer puede dibujar una imagen completamente negra después de cinco minutos sin actividad sonora sostenida. El micrófono y el análisis de audio continúan funcionando, y un sonido que supere el umbral vuelve a dibujar el panel. Este mecanismo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
+El servicio de framebuffer puede mostrar una versión prácticamente negra después de cinco minutos sin actividad sonora sostenida. El cuadro oscuro conserva variaciones imperceptibles y se actualiza dos veces por segundo para evitar que ciertos controladores GMA500 congelen el scanout al recibir una imagen negra estática. El micrófono y el análisis de audio continúan funcionando, y un sonido que supere el umbral o cualquier tecla vuelve a dibujar el panel. Este mecanismo no suspende el equipo, no utiliza `FBIOBLANK` y no modifica el backlight.
 
 Desde el menú físico (`F10`) o la administración web se puede activar o desactivar esta función y elegir un umbral entre 35 y 90 dBA. Los cambios se aplican sin reiniciar.
 
